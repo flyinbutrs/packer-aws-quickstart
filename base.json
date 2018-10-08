@@ -1,0 +1,86 @@
+{
+  "variables": {
+    "profile": "{{env `AWS_PROFILE`}}",
+    "ssh_username": "admin",
+    "ami_description": "Base Debian with Puppet",
+    "ami_name": "stretch-with-puppet",
+    "region": "us-east-1",
+    "source_ami": "{{env `LATEST_DEBIAN_AMI`}}",
+    "vpc_id": "{{env `DEFAULT_VPC`}}",
+    "subnet_id": "{{env `SUBNET`}}",
+    "tag_appversion": "{{env `TAG`}}",
+    "tag_creation_time": "{{timestamp}}",
+    "tag_creator": "{{env `USER`}}"
+  },
+  "builders": [
+    {
+      "profile": "{{user `profile`}}",
+      "encrypted": true,
+      "type": "amazon-ebs",
+      "vpc_id": "{{user `vpc_id`}}",
+      "subnet_id": "{{user `subnet_id`}}",
+      "region": "{{user `region`}}",
+      "source_ami": "{{user `source_ami`}}",
+      "instance_type": "t2.micro",
+      "ssh_pty": true,
+      "ssh_timeout": "5m",
+      "ssh_username": "{{user `ssh_username`}}",
+      "ami_description": "{{user `ami_description`}}",
+      "ami_name": "base/{{user `ami_name`}}",
+      "tags": {
+        "appversion": "{{user `tag_appversion`}}",
+        "base_ami": "{{user `source_ami`}}",
+        "creation_time": "{{user `tag_creation_time`}}",
+        "creator": "{{user `tag_creator`}}"
+      },
+      "name": "base"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "echo -n 'Waiting for cloud-init'",
+        "while [ -n \"$(ps -A | grep cloud-init)\" ]",
+        "  do echo -n . ; sleep 1; done",
+        "echo ' cloud-init finished.'",
+        "",
+        "sudo mkdir -p /opt/puppet/modules",
+        "sudo chown -R {{user `ssh_username`}}:{{user `ssh_username`}} /opt/puppet"
+      ]
+    },
+    {
+      "type": "shell",
+      "script": "bash_scripts/packer-setup-script.sh"
+    },
+    {
+      "type": "shell",
+      "script": "bash_scripts/ubuntu-update.sh"
+    },
+    {
+      "type": "file",
+      "source": "additional_files/50-logicworks",
+      "destination": "/tmp/50-logicworks"
+    },
+    {
+      "type": "shell",
+      "script": "bash_scripts/motd.sh"
+    },
+    {
+      "type": "file",
+      "source": "upstart/ec2_user_data.conf",
+      "destination": "/tmp/ec2_user_data.conf"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo chown -R ubuntu:ubuntu /opt/puppet",
+        "sudo cp /tmp/ec2_user_data.conf /etc/init/ec2_user_data.conf",
+        "sudo chown root:root /etc/init/ec2_user_data.conf",
+        "sudo chmod 0644 /etc/init/ec2_user_data.conf",
+        "sudo mkdir -p /tmp/manifests",
+        "sudo chmod 0777 /tmp /tmp/manifests"
+      ]
+    }
+  ]
+}
