@@ -39,48 +39,15 @@
   "provisioners": [
     {
       "type": "shell",
-      "inline": [
-        "echo -n 'Waiting for cloud-init'",
-        "while [ -n \"$(ps -A | grep cloud-init)\" ]",
-        "  do echo -n . ; sleep 1; done",
-        "echo ' cloud-init finished.'",
-        "",
-        "sudo mkdir -p /opt/puppet/modules",
-        "sudo chown -R {{user `ssh_username`}}:{{user `ssh_username`}} /opt/puppet"
-      ]
+      "script": "scripts/wait-for-cloud-init.sh"
     },
     {
       "type": "shell",
-      "script": "bash_scripts/packer-setup-script.sh"
+      "script": "scripts/update.sh"
     },
     {
       "type": "shell",
-      "script": "bash_scripts/ubuntu-update.sh"
-    },
-    {
-      "type": "file",
-      "source": "additional_files/50-logicworks",
-      "destination": "/tmp/50-logicworks"
-    },
-    {
-      "type": "shell",
-      "script": "bash_scripts/motd.sh"
-    },
-    {
-      "type": "file",
-      "source": "upstart/ec2_user_data.conf",
-      "destination": "/tmp/ec2_user_data.conf"
-    },
-    {
-      "type": "shell",
-      "inline": [
-        "sudo chown -R ubuntu:ubuntu /opt/puppet",
-        "sudo cp /tmp/ec2_user_data.conf /etc/init/ec2_user_data.conf",
-        "sudo chown root:root /etc/init/ec2_user_data.conf",
-        "sudo chmod 0644 /etc/init/ec2_user_data.conf",
-        "sudo mkdir -p /tmp/manifests",
-        "sudo chmod 0777 /tmp /tmp/manifests"
-      ]
+      "script": "scripts/install-puppet.sh"
     }
   ]
 }
